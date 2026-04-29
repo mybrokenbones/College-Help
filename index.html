@@ -1,4 +1,19 @@
-import { useState } from “react”;
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>College Decision Builder</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // import { useState } from “react”;
 
 const SCHOOLS = [“Church of the King College”, “Milestone Church College”];
 const CATEGORIES = [“Theology & Doctrine”, “Community & Culture”, “Programs & Courses”, “Cost & Scholarships”, “Location”, “Ministry Opportunities”, “Other”];
@@ -416,3 +431,10 @@ minHeight: 60, boxSizing: “border-box”,
 
 );
 }
+        
+        // Add this line at the very bottom to make it run:
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
