@@ -5,287 +5,164 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>College Decision Builder</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0f172a; }
-    textarea:focus { outline: none; }
-    select { appearance: none; -webkit-appearance: none; }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #1e293b; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    body { background: #0f172a; font-family: Georgia, serif; color: #f1f5f9; min-height: 100vh; }
+    button { font-family: Georgia, serif; }
+    select { font-family: Georgia, serif; -webkit-appearance: none; appearance: none; }
+    textarea { font-family: Georgia, serif; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
 
-const SCHOOLS = [“Church of the King College”, “Milestone Church College”];
-const CATEGORIES = [“Theology & Doctrine”, “Community & Culture”, “Programs & Courses”, “Cost & Scholarships”, “Location”, “Ministry Opportunities”, “Other”];
-const WEIGHTS = [
-{ label: “Nice to have”, value: 1 },
-{ label: “Somewhat important”, value: 2 },
-{ label: “Very important”, value: 3 },
-{ label: “Deal breaker”, value: 4 },
-];
-const SCHOOL_COLORS = [”#1e3a5f”, “#6b2737”];
-const SCHOOL_ACCENT = [”#3b82f6”, “#e11d48”];
+<div id="header" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-bottom:1px solid #334155;padding:24px 16px 18px">
+  <div style="font-size:11px;letter-spacing:0.15em;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">FAMILY DECISION TOOL</div>
+  <h1 style="font-size:24px;font-weight:700;color:#f8fafc;margin-bottom:6px">College Decision Builder</h1>
+  <p style="color:#94a3b8;font-size:13px">Weigh what matters. Choose with confidence.</p>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button id="btnBuild" onclick="setView('build')" style="padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;cursor:pointer;font-weight:600">✏️ Build</button>
+    <button id="btnCompare" onclick="setView('compare')" style="padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer">⚖️ Compare</button>
+  </div>
+</div>
 
+<div id="app" style="padding:20px 16px;max-width:900px;margin:0 auto"></div>
+
+<script>
+const SCHOOLS = ["Church of the King", "Milestone Church"];
+const SCHOOL_COLORS = ["#1e3a5f", "#6b2737"];
+const SCHOOL_ACCENT = ["#3b82f6", "#e11d48"];
+const CATEGORIES = ["Theology & Doctrine","Community & Culture","Programs & Courses","Cost & Scholarships","Location","Ministry Opportunities","Other"];
+const WEIGHTS = [{label:"Nice to have",value:1},{label:"Somewhat important",value:2},{label:"Very important",value:3},{label:"Deal breaker",value:4}];
+
+let items = [];
 let idCounter = 1;
-const newItem = (type, school, category) => ({
-id: idCounter++, type, school, category, text: “”, weight: 2,
-});
+let activeSchool = 0;
+let activeCategory = "All";
+let currentView = "build";
+let editingId = null;
 
-function ItemCard({ item, editing, onEdit, onBlur, onChange, onRemove, accentColor }) {
-const isPro = item.type === “pro”;
-return (
-<div onClick={onEdit} style={{
-background: “#1e293b”,
-border: `1px solid ${isPro ? "#065f4644" : "#7f1d1d44"}`,
-borderLeft: `3px solid ${isPro ? "#34d399" : "#f87171"}`,
-borderRadius: 8, padding: “12px 14px”, marginBottom: 10, cursor: “text”,
-}}>
-{editing ? (
-<textarea
-autoFocus
-value={item.text}
-onChange={(e) => onChange(“text”, e.target.value)}
-onBlur={onBlur}
-placeholder={`Enter a ${item.type}...`}
-style={{
-width: “100%”, background: “transparent”, border: “none”, outline: “none”,
-color: “#f1f5f9”, fontFamily: “Georgia, serif”, fontSize: 14, resize: “none”, minHeight: 60,
-}}
-/>
-) : (
-<div style={{ fontSize: 14, color: item.text ? “#e2e8f0” : “#475569”, minHeight: 36, lineHeight: 1.5 }}>
-{item.text || `Click to add a ${item.type}...`}
-</div>
-)}
-<div style={{ display: “flex”, justifyContent: “space-between”, alignItems: “center”, marginTop: 10 }}>
-<div style={{ display: “flex”, gap: 6, flexWrap: “wrap” }}>
-<select value={item.category}
-onChange={(e) => { e.stopPropagation(); onChange(“category”, e.target.value); }}
-onClick={(e) => e.stopPropagation()}
-style={{ background: “#0f172a”, border: “1px solid #334155”, borderRadius: 5, color: “#94a3b8”, fontSize: 11, padding: “3px 6px”, fontFamily: “Georgia, serif”, cursor: “pointer” }}>
-{CATEGORIES.map(c => <option key={c}>{c}</option>)}
-</select>
-<select value={item.weight}
-onChange={(e) => { e.stopPropagation(); onChange(“weight”, Number(e.target.value)); }}
-onClick={(e) => e.stopPropagation()}
-style={{ background: “#0f172a”, border: `1px solid ${accentColor}44`, borderRadius: 5, color: accentColor, fontSize: 11, padding: “3px 6px”, fontFamily: “Georgia, serif”, cursor: “pointer” }}>
-{WEIGHTS.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
-</select>
-</div>
-<button onClick={(e) => { e.stopPropagation(); onRemove(); }}
-style={{ background: “none”, border: “none”, color: “#475569”, cursor: “pointer”, fontSize: 18, padding: “0 4px” }}>×</button>
-</div>
-</div>
-);
+function setView(v) {
+  currentView = v;
+  document.getElementById("btnBuild").style.cssText = v==="build"
+    ? "padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;cursor:pointer;font-weight:600"
+    : "padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer";
+  document.getElementById("btnCompare").style.cssText = v==="compare"
+    ? "padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;cursor:pointer;font-weight:600"
+    : "padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer";
+  render();
 }
 
-function App() {
-const [items, setItems] = React.useState([]);
-const [activeSchool, setActiveSchool] = React.useState(0);
-const [activeCategory, setActiveCategory] = React.useState(“All”);
-const [view, setView] = React.useState(“build”);
-const [editingId, setEditingId] = React.useState(null);
-
-const addItem = (type) => {
-const item = newItem(type, activeSchool, activeCategory === “All” ? CATEGORIES[0] : activeCategory);
-setItems(prev => […prev, item]);
-setEditingId(item.id);
-};
-const updateItem = (id, field, value) => setItems(prev => prev.map(i => i.id === id ? { …i, [field]: value } : i));
-const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
-
-const filtered = items.filter(i => i.school === activeSchool && (activeCategory === “All” || i.category === activeCategory));
-const pros = filtered.filter(i => i.type === “pro”);
-const cons = filtered.filter(i => i.type === “con”);
-
-const score = (idx) => {
-const si = items.filter(i => i.school === idx && i.text.trim());
-return si.filter(i => i.type === “pro”).reduce((s, i) => s + i.weight, 0)
-- si.filter(i => i.type === “con”).reduce((s, i) => s + i.weight, 0);
-};
-const scores = SCHOOLS.map((_, i) => score(i));
-const maxScore = Math.max(Math.abs(scores[0]), Math.abs(scores[1]), 1);
-
-return (
-<div style={{ minHeight: “100vh”, background: “#0f172a”, fontFamily: “Georgia, serif”, color: “#f1f5f9” }}>
-
-```
-  {/* Header */}
-  <div style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", borderBottom: "1px solid #334155", padding: "28px 24px 20px" }}>
-    <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 6 }}>FAMILY DECISION TOOL</div>
-      <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#f8fafc" }}>College Decision Builder</h1>
-      <p style={{ margin: "6px 0 0", color: "#94a3b8", fontSize: 14 }}>Weigh what matters. Choose with confidence.</p>
-      <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-        {["build", "compare"].map(v => (
-          <button key={v} onClick={() => setView(v)} style={{
-            padding: "7px 20px", borderRadius: 6, border: "1px solid",
-            borderColor: view === v ? "#3b82f6" : "#334155",
-            background: view === v ? "#1d4ed8" : "transparent",
-            color: view === v ? "#fff" : "#94a3b8",
-            fontSize: 13, cursor: "pointer", fontFamily: "Georgia, serif",
-            fontWeight: view === v ? 600 : 400,
-          }}>
-            {v === "build" ? "✏️ Build" : "⚖️ Compare"}
-          </button>
-        ))}
-      </div>
-    </div>
-  </div>
-
-  <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 24px" }}>
-
-    {view === "compare" ? (
-      <div>
-        <h2 style={{ fontSize: 18, fontWeight: 600, color: "#cbd5e1", marginBottom: 24 }}>Score Summary</h2>
-        {SCHOOLS.map((school, idx) => {
-          const s = scores[idx];
-          const barWidth = Math.abs(s) / maxScore * 100;
-          const positive = s >= 0;
-          return (
-            <div key={idx} style={{ background: "#1e293b", border: `1px solid ${SCHOOL_COLORS[idx]}44`, borderRadius: 12, padding: "20px 24px", marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, color: SCHOOL_ACCENT[idx] }}>{school}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: positive ? "#34d399" : "#f87171" }}>
-                  {positive ? "+" : ""}{s}
-                </div>
-              </div>
-              <div style={{ background: "#0f172a", borderRadius: 6, height: 10, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${barWidth}%`, background: positive ? "#10b981" : "#ef4444", borderRadius: 6 }} />
-              </div>
-              <div style={{ display: "flex", gap: 20, marginTop: 12, fontSize: 13, color: "#94a3b8" }}>
-                <span>✅ {items.filter(i => i.school === idx && i.type === "pro" && i.text.trim()).length} pros</span>
-                <span>❌ {items.filter(i => i.school === idx && i.type === "con" && i.text.trim()).length} cons</span>
-              </div>
-            </div>
-          );
-        })}
-
-        <h2 style={{ fontSize: 18, fontWeight: 600, color: "#cbd5e1", margin: "32px 0 16px" }}>Category Breakdown</h2>
-        {CATEGORIES.map(cat => {
-          const rows = [0, 1].map(idx => ({
-            pros: items.filter(i => i.school === idx && i.type === "pro" && i.category === cat && i.text.trim()),
-            cons: items.filter(i => i.school === idx && i.type === "con" && i.category === cat && i.text.trim()),
-          }));
-          if (!rows[0].pros.length && !rows[0].cons.length && !rows[1].pros.length && !rows[1].cons.length) return null;
-          return (
-            <div key={cat} style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, letterSpacing: "0.15em", color: "#64748b", textTransform: "uppercase", marginBottom: 10 }}>{cat}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {SCHOOLS.map((school, idx) => (
-                  <div key={idx} style={{ background: "#1e293b", borderRadius: 8, padding: "14px 16px", borderTop: `3px solid ${SCHOOL_ACCENT[idx]}` }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: SCHOOL_ACCENT[idx], marginBottom: 8 }}>{school}</div>
-                    {rows[idx].pros.map(i => <div key={i.id} style={{ fontSize: 13, color: "#86efac", marginBottom: 4 }}>✅ {i.text}</div>)}
-                    {rows[idx].cons.map(i => <div key={i.id} style={{ fontSize: 13, color: "#fca5a5", marginBottom: 4 }}>❌ {i.text}</div>)}
-                    {!rows[idx].pros.length && !rows[idx].cons.length && <div style={{ fontSize: 12, color: "#475569", fontStyle: "italic" }}>Nothing added yet</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-    ) : (
-      <div>
-        {/* School Tabs */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 24, borderRadius: 10, overflow: "hidden", border: "1px solid #334155" }}>
-          {SCHOOLS.map((school, idx) => (
-            <button key={idx} onClick={() => setActiveSchool(idx)} style={{
-              flex: 1, padding: "14px 16px",
-              background: activeSchool === idx ? SCHOOL_COLORS[idx] : "#1e293b",
-              border: "none", color: activeSchool === idx ? "#fff" : "#64748b",
-              fontFamily: "Georgia, serif", fontSize: 14,
-              fontWeight: activeSchool === idx ? 700 : 400,
-              cursor: "pointer", borderRight: idx === 0 ? "1px solid #334155" : "none",
-            }}>
-              {school}
-              <span style={{ marginLeft: 8, fontSize: 11, background: activeSchool === idx ? "rgba(255,255,255,0.2)" : "#334155", padding: "2px 7px", borderRadius: 10 }}>
-                {items.filter(i => i.school === idx && i.text.trim()).length}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Category Filter */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24 }}>
-          {["All", ...CATEGORIES].map(cat => (
-            <button key={cat} onClick={() => setActiveCategory(cat)} style={{
-              padding: "5px 12px", borderRadius: 20, border: "1px solid",
-              borderColor: activeCategory === cat ? SCHOOL_ACCENT[activeSchool] : "#334155",
-              background: activeCategory === cat ? `${SCHOOL_ACCENT[activeSchool]}22` : "transparent",
-              color: activeCategory === cat ? SCHOOL_ACCENT[activeSchool] : "#64748b",
-              fontSize: 12, cursor: "pointer", fontFamily: "Georgia, serif",
-            }}>
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Add Buttons */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          <button onClick={() => addItem("pro")} style={{ padding: "10px 20px", borderRadius: 8, border: "1px solid #34d399", background: "#065f4622", color: "#34d399", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "Georgia, serif" }}>
-            + Add Pro
-          </button>
-          <button onClick={() => addItem("con")} style={{ padding: "10px 20px", borderRadius: 8, border: "1px solid #f87171", background: "#7f1d1d22", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "Georgia, serif" }}>
-            + Add Con
-          </button>
-        </div>
-
-        {/* Items Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-          <div>
-            <div style={{ fontSize: 12, letterSpacing: "0.15em", color: "#34d399", textTransform: "uppercase", marginBottom: 12, fontWeight: 700 }}>
-              ✅ Pros ({pros.length})
-            </div>
-            {pros.length === 0 && (
-              <div style={{ background: "#1e293b", borderRadius: 8, padding: "24px 16px", textAlign: "center", color: "#475569", fontSize: 13, border: "1px dashed #334155" }}>
-                No pros added yet
-              </div>
-            )}
-            {pros.map(item => (
-              <ItemCard key={item.id} item={item} editing={editingId === item.id}
-                onEdit={() => setEditingId(item.id)} onBlur={() => setEditingId(null)}
-                onChange={(f, v) => updateItem(item.id, f, v)} onRemove={() => removeItem(item.id)}
-                accentColor={SCHOOL_ACCENT[activeSchool]} />
-            ))}
-          </div>
-          <div>
-            <div style={{ fontSize: 12, letterSpacing: "0.15em", color: "#f87171", textTransform: "uppercase", marginBottom: 12, fontWeight: 700 }}>
-              ❌ Cons ({cons.length})
-            </div>
-            {cons.length === 0 && (
-              <div style={{ background: "#1e293b", borderRadius: 8, padding: "24px 16px", textAlign: "center", color: "#475569", fontSize: 13, border: "1px dashed #334155" }}>
-                No cons added yet
-              </div>
-            )}
-            {cons.map(item => (
-              <ItemCard key={item.id} item={item} editing={editingId === item.id}
-                onEdit={() => setEditingId(item.id)} onBlur={() => setEditingId(null)}
-                onChange={(f, v) => updateItem(item.id, f, v)} onRemove={() => removeItem(item.id)}
-                accentColor={SCHOOL_ACCENT[activeSchool]} />
-            ))}
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-</div>
-```
-
-);
+function addItem(type) {
+  const item = {id:idCounter++, type, school:activeSchool, category:activeCategory==="All"?CATEGORIES[0]:activeCategory, text:"", weight:2};
+  items.push(item);
+  editingId = item.id;
+  render();
+  setTimeout(() => { const ta = document.getElementById("ta-"+item.id); if(ta) ta.focus(); }, 60);
 }
 
-const root = ReactDOM.createRoot(document.getElementById(“root”));
-root.render(<App />);
+function updateText(id, val) { const i = items.find(x=>x.id===id); if(i) i.text=val; }
+function updateField(id, field, val) { const i=items.find(x=>x.id===id); if(i) i[field]=val; render(); }
+function removeItem(id) { items=items.filter(x=>x.id!==id); render(); }
+function startEdit(id) { editingId=id; render(); setTimeout(()=>{ const ta=document.getElementById("ta-"+id); if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}},40); }
+function stopEdit() { editingId=null; render(); }
+function setSchool(idx) { activeSchool=idx; render(); }
+function setCat(cat) { activeCategory=cat; render(); }
 
-  </script>
+function score(idx) {
+  const si=items.filter(i=>i.school===idx&&i.text.trim());
+  return si.filter(i=>i.type==="pro").reduce((s,i)=>s+i.weight,0)
+        -si.filter(i=>i.type==="con").reduce((s,i)=>s+i.weight,0);
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function renderCard(item) {
+  const isPro = item.type==="pro";
+  const bl = isPro ? "#34d399" : "#f87171";
+  const acc = SCHOOL_ACCENT[item.school];
+  const editing = editingId===item.id;
+  const catOpts = CATEGORIES.map(c=>`<option value="${esc(c)}" ${item.category===c?"selected":""}>${esc(c)}</option>`).join("");
+  const wtOpts = WEIGHTS.map(w=>`<option value="${w.value}" ${item.weight===w.value?"selected":""}>${esc(w.label)}</option>`).join("");
+  const body = editing
+    ? `<textarea id="ta-${item.id}" onblur="stopEdit()" oninput="updateText(${item.id},this.value)" style="width:100%;background:transparent;border:none;outline:none;color:#f1f5f9;font-size:14px;resize:none;min-height:56px;font-family:Georgia,serif">${esc(item.text)}</textarea>`
+
+```
+: `<div onclick="startEdit(${item.id})" style="font-size:14px;color:${item.text?"#e2e8f0":"#475569"};min-height:36px;line-height:1.5">${item.text ? esc(item.text) : "Tap to add a "+item.type+"..."}</div>`;
+```
+
+return `<div style=“background:#1e293b;border:1px solid ${isPro?”#065f4644”:”#7f1d1d44”};border-left:3px solid ${bl};border-radius:8px;padding:12px 14px;margin-bottom:10px”>
+${body}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:6px">
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<select onchange="updateField(${item.id},'category',this.value)" style="background:#0f172a;border:1px solid #334155;border-radius:5px;color:#94a3b8;font-size:11px;padding:3px 6px;cursor:pointer">${catOpts}</select>
+<select onchange="updateField(${item.id},'weight',Number(this.value))" style="background:#0f172a;border:1px solid ${acc}44;border-radius:5px;color:${acc};font-size:11px;padding:3px 6px;cursor:pointer">${wtOpts}</select>
+</div>
+<button onclick="removeItem(${item.id})" style="background:none;border:none;color:#475569;cursor:pointer;font-size:18px;padding:0 4px">×</button>
+</div>
+
+  </div>`;
+}
+
+function renderBuild() {
+const filtered = items.filter(i=>i.school===activeSchool&&(activeCategory===“All”||i.category===activeCategory));
+const pros = filtered.filter(i=>i.type===“pro”);
+const cons = filtered.filter(i=>i.type===“con”);
+
+const tabs = SCHOOLS.map((s,idx)=>{
+const cnt = items.filter(i=>i.school===idx&&i.text.trim()).length;
+const a = activeSchool===idx;
+return `<button onclick="setSchool(${idx})" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-size:13px;font-family:Georgia,serif;background:${a?SCHOOL_COLORS[idx]:"#1e293b"};color:${a?"#fff":"#64748b"};font-weight:${a?700:400};${idx===0?"border-right:1px solid #334155":""}">${s} <span style="margin-left:6px;font-size:11px;background:${a?"rgba(255,255,255,0.2)":"#334155"};padding:2px 7px;border-radius:10px">${cnt}</span></button>`;
+}).join(””);
+
+const cats = [“All”,…CATEGORIES].map(cat=>{
+const a = activeCategory===cat;
+return `<button onclick="setCat('${cat.replace(/'/g,"\\'")}')\" style="padding:5px 10px;border-radius:20px;border:1px solid ${a?SCHOOL_ACCENT[activeSchool]:"#334155"};background:${a?SCHOOL_ACCENT[activeSchool]+"22":"transparent"};color:${a?SCHOOL_ACCENT[activeSchool]:"#64748b"};font-size:11px;cursor:pointer;font-family:Georgia,serif;white-space:nowrap">${cat}</button>`;
+}).join(””);
+
+const proHTML = pros.length ? pros.map(renderCard).join(””) : `<div style="background:#1e293b;border-radius:8px;padding:20px;text-align:center;color:#475569;font-size:13px;border:1px dashed #334155">No pros added yet</div>`;
+const conHTML = cons.length ? cons.map(renderCard).join(””) : `<div style="background:#1e293b;border-radius:8px;padding:20px;text-align:center;color:#475569;font-size:13px;border:1px dashed #334155">No cons added yet</div>`;
+
+return ` <div style="display:flex;border-radius:10px;overflow:hidden;border:1px solid #334155;margin-bottom:20px">${tabs}</div> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">${cats}</div> <div style="display:flex;gap:10px;margin-bottom:20px"> <button onclick="addItem('pro')" style="padding:10px 18px;border-radius:8px;border:1px solid #34d399;background:#065f4622;color:#34d399;font-size:14px;font-weight:600;cursor:pointer">+ Add Pro</button> <button onclick="addItem('con')" style="padding:10px 18px;border-radius:8px;border:1px solid #f87171;background:#7f1d1d22;color:#f87171;font-size:14px;font-weight:600;cursor:pointer">+ Add Con</button> </div> <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"> <div> <div style="font-size:11px;letter-spacing:0.12em;color:#34d399;text-transform:uppercase;margin-bottom:10px;font-weight:700">✅ Pros (${pros.length})</div> ${proHTML} </div> <div> <div style="font-size:11px;letter-spacing:0.12em;color:#f87171;text-transform:uppercase;margin-bottom:10px;font-weight:700">❌ Cons (${cons.length})</div> ${conHTML} </div> </div>`;
+}
+
+function renderCompare() {
+const scores = SCHOOLS.map((_,i)=>score(i));
+const maxS = Math.max(Math.abs(scores[0]),Math.abs(scores[1]),1);
+
+const bars = SCHOOLS.map((school,idx)=>{
+const s=scores[idx], pos=s>=0;
+const bw=Math.abs(s)/maxS*100;
+const pc=items.filter(i=>i.school===idx&&i.type===“pro”&&i.text.trim()).length;
+const cc=items.filter(i=>i.school===idx&&i.type===“con”&&i.text.trim()).length;
+return `<div style="background:#1e293b;border:1px solid ${SCHOOL_COLORS[idx]}44;border-radius:12px;padding:18px 20px;margin-bottom:14px"> <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"> <div style="font-weight:700;font-size:15px;color:${SCHOOL_ACCENT[idx]}">${school}</div> <div style="font-size:20px;font-weight:800;color:${pos?"#34d399":"#f87171"}">${pos?"+":""}${s}</div> </div> <div style="background:#0f172a;border-radius:6px;height:10px;overflow:hidden"> <div style="height:100%;width:${bw}%;background:${pos?"#10b981":"#ef4444"};border-radius:6px"></div> </div> <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:#94a3b8"> <span>✅ ${pc} pros</span><span>❌ ${cc} cons</span> </div> </div>`;
+}).join(””);
+
+const cats = CATEGORIES.map(cat=>{
+const rows=[0,1].map(idx=>({
+pros:items.filter(i=>i.school===idx&&i.type===“pro”&&i.category===cat&&i.text.trim()),
+cons:items.filter(i=>i.school===idx&&i.type===“con”&&i.category===cat&&i.text.trim()),
+}));
+if(!rows[0].pros.length&&!rows[0].cons.length&&!rows[1].pros.length&&!rows[1].cons.length) return “”;
+const cols = SCHOOLS.map((s,idx)=>{
+const pp=rows[idx].pros.map(i=>`<div style="font-size:12px;color:#86efac;margin-bottom:3px">✅ ${esc(i.text)}</div>`).join(””);
+const cc=rows[idx].cons.map(i=>`<div style="font-size:12px;color:#fca5a5;margin-bottom:3px">❌ ${esc(i.text)}</div>`).join(””);
+const empty=!rows[idx].pros.length&&!rows[idx].cons.length?`<div style="font-size:11px;color:#475569;font-style:italic">Nothing yet</div>`:””;
+return `<div style="background:#1e293b;border-radius:8px;padding:12px;border-top:3px solid ${SCHOOL_ACCENT[idx]}"> <div style="font-size:11px;font-weight:600;color:${SCHOOL_ACCENT[idx]};margin-bottom:6px">${s}</div> ${pp}${cc}${empty} </div>`;
+}).join(””);
+return `<div style="margin-bottom:18px"> <div style="font-size:11px;letter-spacing:0.12em;color:#64748b;text-transform:uppercase;margin-bottom:8px">${cat}</div> <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cols}</div> </div>`;
+}).join(””);
+
+return `<h2 style="font-size:17px;font-weight:600;color:#cbd5e1;margin-bottom:20px">Score Summary</h2> ${bars} <h2 style="font-size:17px;font-weight:600;color:#cbd5e1;margin:28px 0 16px">Category Breakdown</h2> ${cats || '<div style="color:#475569;font-size:13px">Add items in Build mode first.</div>'}`;
+}
+
+function render() {
+document.getElementById(“app”).innerHTML = currentView===“build” ? renderBuild() : renderCompare();
+}
+
+render();
+</script>
+
 </body>
 </html>
