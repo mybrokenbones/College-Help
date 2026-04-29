@@ -8,7 +8,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0f172a; font-family: Georgia, serif; color: #f1f5f9; min-height: 100vh; }
-    button { font-family: Georgia, serif; }
+    button { font-family: Georgia, serif; cursor: pointer; }
     select { font-family: Georgia, serif; -webkit-appearance: none; appearance: none; }
     textarea { font-family: Georgia, serif; }
   </style>
@@ -20,145 +20,266 @@
   <h1 style="font-size:24px;font-weight:700;color:#f8fafc;margin-bottom:6px">College Decision Builder</h1>
   <p style="color:#94a3b8;font-size:13px">Weigh what matters. Choose with confidence.</p>
   <div style="display:flex;gap:8px;margin-top:16px">
-    <button id="btnBuild" onclick="setView('build')" style="padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;cursor:pointer;font-weight:600">✏️ Build</button>
-    <button id="btnCompare" onclick="setView('compare')" style="padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer">⚖️ Compare</button>
+    <button id="btnBuild" id="btnBuildBtn" onclick="setView(this.dataset.v)" data-v="build" style="padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;font-weight:600">✏️ Build</button>
+    <button id="btnCompare" id="btnCompareBtn" onclick="setView(this.dataset.v)" data-v="compare" style="padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px">⚖️ Compare</button>
   </div>
 </div>
 
 <div id="app" style="padding:20px 16px;max-width:900px;margin:0 auto"></div>
 
 <script>
-const SCHOOLS = ["Church of the King", "Milestone Church"];
-const SCHOOL_COLORS = ["#1e3a5f", "#6b2737"];
-const SCHOOL_ACCENT = ["#3b82f6", "#e11d48"];
-const CATEGORIES = ["Theology & Doctrine","Community & Culture","Programs & Courses","Cost & Scholarships","Location","Ministry Opportunities","Other"];
-const WEIGHTS = [{label:"Nice to have",value:1},{label:"Somewhat important",value:2},{label:"Very important",value:3},{label:"Deal breaker",value:4}];
+// ── Data ──────────────────────────────────────────────
+var SCHOOLS = ["Church of the King", "Milestone Church"];
+var SCHOOL_COLORS = ["#1e3a5f", "#6b2737"];
+var SCHOOL_ACCENT = ["#3b82f6", "#e11d48"];
+var CATEGORIES = ["Theology & Doctrine","Community & Culture","Programs & Courses","Cost & Scholarships","Location","Ministry Opportunities","Other"];
+var WEIGHTS = [
+  {label:"Nice to have", value:1},
+  {label:"Somewhat important", value:2},
+  {label:"Very important", value:3},
+  {label:"Deal breaker", value:4}
+];
 
-let items = [];
-let idCounter = 1;
-let activeSchool = 0;
-let activeCategory = "All";
-let currentView = "build";
-let editingId = null;
+var items = [];
+var idCounter = 1;
+var activeSchool = 0;
+var activeCategory = "All";
+var currentView = "build";
+var editingId = null;
 
+// ── State helpers ─────────────────────────────────────
 function setView(v) {
   currentView = v;
-  document.getElementById("btnBuild").style.cssText = v==="build"
-    ? "padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;cursor:pointer;font-weight:600"
-    : "padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer";
-  document.getElementById("btnCompare").style.cssText = v==="compare"
-    ? "padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;cursor:pointer;font-weight:600"
-    : "padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer";
+  var bb = document.getElementById("btnBuild");
+  var bc = document.getElementById("btnCompare");
+  if (v === "build") {
+    bb.style.cssText = "padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:Georgia,serif";
+    bc.style.cssText = "padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:Georgia,serif";
+  } else {
+    bb.style.cssText = "padding:7px 18px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:Georgia,serif";
+    bc.style.cssText = "padding:7px 18px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:Georgia,serif";
+  }
   render();
 }
 
+function setSchool(idx) { activeSchool = idx; render(); }
+function setCat(idx) { activeCategory = idx === -1 ? "All" : CATEGORIES[idx]; render(); }
+
 function addItem(type) {
-  const item = {id:idCounter++, type, school:activeSchool, category:activeCategory==="All"?CATEGORIES[0]:activeCategory, text:"", weight:2};
+  var cat = activeCategory === "All" ? CATEGORIES[0] : activeCategory;
+  var item = {id: idCounter++, type: type, school: activeSchool, category: cat, text: "", weight: 2};
   items.push(item);
   editingId = item.id;
   render();
-  setTimeout(() => { const ta = document.getElementById("ta-"+item.id); if(ta) ta.focus(); }, 60);
+  setTimeout(function() {
+    var ta = document.getElementById("ta" + item.id);
+    if (ta) ta.focus();
+  }, 60);
 }
 
-function updateText(id, val) { const i = items.find(x=>x.id===id); if(i) i.text=val; }
-function updateField(id, field, val) { const i=items.find(x=>x.id===id); if(i) i[field]=val; render(); }
-function removeItem(id) { items=items.filter(x=>x.id!==id); render(); }
-function startEdit(id) { editingId=id; render(); setTimeout(()=>{ const ta=document.getElementById("ta-"+id); if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}},40); }
-function stopEdit() { editingId=null; render(); }
-function setSchool(idx) { activeSchool=idx; render(); }
-function setCat(cat) { activeCategory=cat; render(); }
+function removeItem(id) {
+  items = items.filter(function(x) { return x.id !== id; });
+  render();
+}
+
+function startEdit(id) {
+  editingId = id;
+  render();
+  setTimeout(function() {
+    var ta = document.getElementById("ta" + id);
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }, 40);
+}
+
+function stopEdit(id) {
+  var ta = document.getElementById("ta" + id);
+  if (ta) { var i = items.find(function(x){return x.id===id;}); if(i) i.text = ta.value; }
+  editingId = null;
+  render();
+}
+
+function changeCategory(id, val) {
+  var i = items.find(function(x){return x.id===id;});
+  if (i) { i.category = val; render(); }
+}
+
+function changeWeight(id, val) {
+  var i = items.find(function(x){return x.id===id;});
+  if (i) { i.weight = parseInt(val); render(); }
+}
 
 function score(idx) {
-  const si=items.filter(i=>i.school===idx&&i.text.trim());
-  return si.filter(i=>i.type==="pro").reduce((s,i)=>s+i.weight,0)
-        -si.filter(i=>i.type==="con").reduce((s,i)=>s+i.weight,0);
+  var si = items.filter(function(i){ return i.school===idx && i.text.trim(); });
+  var pros = si.filter(function(i){return i.type==="pro";}).reduce(function(s,i){return s+i.weight;}, 0);
+  var cons = si.filter(function(i){return i.type==="con";}).reduce(function(s,i){return s+i.weight;}, 0);
+  return pros - cons;
 }
 
 function esc(str) {
-  return String(str).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return String(str)
+    .replace(/&/g,"&amp;")
+    .replace(/"/g,"&quot;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/'/g,"&#39;");
 }
 
+// ── Card renderer ─────────────────────────────────────
 function renderCard(item) {
-  const isPro = item.type==="pro";
-  const bl = isPro ? "#34d399" : "#f87171";
-  const acc = SCHOOL_ACCENT[item.school];
-  const editing = editingId===item.id;
-  const catOpts = CATEGORIES.map(c=>`<option value="${esc(c)}" ${item.category===c?"selected":""}>${esc(c)}</option>`).join("");
-  const wtOpts = WEIGHTS.map(w=>`<option value="${w.value}" ${item.weight===w.value?"selected":""}>${esc(w.label)}</option>`).join("");
-  const body = editing
-    ? `<textarea id="ta-${item.id}" onblur="stopEdit()" oninput="updateText(${item.id},this.value)" style="width:100%;background:transparent;border:none;outline:none;color:#f1f5f9;font-size:14px;resize:none;min-height:56px;font-family:Georgia,serif">${esc(item.text)}</textarea>`
+  var isPro = item.type === "pro";
+  var borderColor = isPro ? "#34d399" : "#f87171";
+  var bgBorder = isPro ? "#065f4644" : "#7f1d1d44";
+  var acc = SCHOOL_ACCENT[item.school];
+  var editing = editingId === item.id;
 
-```
-: `<div onclick="startEdit(${item.id})" style="font-size:14px;color:${item.text?"#e2e8f0":"#475569"};min-height:36px;line-height:1.5">${item.text ? esc(item.text) : "Tap to add a "+item.type+"..."}</div>`;
-```
+  var catOpts = "";
+  for (var c = 0; c < CATEGORIES.length; c++) {
+    var sel = item.category === CATEGORIES[c] ? " selected" : "";
+    catOpts += '<option value="' + c + '"' + sel + '>' + esc(CATEGORIES[c]) + '</option>';
+  }
 
-return `<div style=“background:#1e293b;border:1px solid ${isPro?”#065f4644”:”#7f1d1d44”};border-left:3px solid ${bl};border-radius:8px;padding:12px 14px;margin-bottom:10px”>
-${body}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:6px">
-<div style="display:flex;gap:6px;flex-wrap:wrap">
-<select onchange="updateField(${item.id},'category',this.value)" style="background:#0f172a;border:1px solid #334155;border-radius:5px;color:#94a3b8;font-size:11px;padding:3px 6px;cursor:pointer">${catOpts}</select>
-<select onchange="updateField(${item.id},'weight',Number(this.value))" style="background:#0f172a;border:1px solid ${acc}44;border-radius:5px;color:${acc};font-size:11px;padding:3px 6px;cursor:pointer">${wtOpts}</select>
-</div>
-<button onclick="removeItem(${item.id})" style="background:none;border:none;color:#475569;cursor:pointer;font-size:18px;padding:0 4px">×</button>
-</div>
+  var wtOpts = "";
+  for (var w = 0; w < WEIGHTS.length; w++) {
+    var wsel = item.weight === WEIGHTS[w].value ? " selected" : "";
+    wtOpts += '<option value="' + WEIGHTS[w].value + '"' + wsel + '>' + esc(WEIGHTS[w].label) + '</option>';
+  }
 
-  </div>`;
+  var body;
+  if (editing) {
+    body = '<textarea id="ta' + item.id + '" onblur="stopEdit(' + item.id + ')" style="width:100%;background:transparent;border:none;outline:none;color:#f1f5f9;font-size:14px;resize:none;min-height:56px;font-family:Georgia,serif">' + esc(item.text) + '</textarea>';
+
+} else {
+var display = item.text ? esc(item.text) : “Tap to add a “ + item.type + “…”;
+var color = item.text ? “#e2e8f0” : “#475569”;
+body = ‘<div onclick="startEdit(' + item.id + ')" style="font-size:14px;color:' + color + ';min-height:36px;line-height:1.5">’ + display + ‘</div>’;
 }
 
+return ‘<div style="background:#1e293b;border:1px solid ' + bgBorder + ';border-left:3px solid ' + borderColor + ';border-radius:8px;padding:12px 14px;margin-bottom:10px">’
++ body
++ ‘<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:6px">’
++ ‘<div style="display:flex;gap:6px;flex-wrap:wrap">’
++ ‘<select onchange="changeCategory(' + item.id + ',CATEGORIES[this.value])" style="background:#0f172a;border:1px solid #334155;border-radius:5px;color:#94a3b8;font-size:11px;padding:3px 6px">’ + catOpts + ‘</select>’
++ ‘<select onchange="changeWeight(' + item.id + ',this.value)" style="background:#0f172a;border:1px solid ' + acc + '44;border-radius:5px;color:' + acc + ';font-size:11px;padding:3px 6px">’ + wtOpts + ‘</select>’
++ ‘</div>’
++ ‘<button onclick="removeItem(' + item.id + ')" style="background:none;border:none;color:#475569;cursor:pointer;font-size:20px;padding:0 4px">×</button>’
++ ‘</div>’
++ ‘</div>’;
+}
+
+// ── Build view ────────────────────────────────────────
 function renderBuild() {
-const filtered = items.filter(i=>i.school===activeSchool&&(activeCategory===“All”||i.category===activeCategory));
-const pros = filtered.filter(i=>i.type===“pro”);
-const cons = filtered.filter(i=>i.type===“con”);
+var html = “”;
 
-const tabs = SCHOOLS.map((s,idx)=>{
-const cnt = items.filter(i=>i.school===idx&&i.text.trim()).length;
-const a = activeSchool===idx;
-return `<button onclick="setSchool(${idx})" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-size:13px;font-family:Georgia,serif;background:${a?SCHOOL_COLORS[idx]:"#1e293b"};color:${a?"#fff":"#64748b"};font-weight:${a?700:400};${idx===0?"border-right:1px solid #334155":""}">${s} <span style="margin-left:6px;font-size:11px;background:${a?"rgba(255,255,255,0.2)":"#334155"};padding:2px 7px;border-radius:10px">${cnt}</span></button>`;
-}).join(””);
+// School tabs
+html += ‘<div style="display:flex;border-radius:10px;overflow:hidden;border:1px solid #334155;margin-bottom:20px">’;
+for (var s = 0; s < SCHOOLS.length; s++) {
+var cnt = items.filter(function(i){ return i.school===s && i.text.trim(); }).length;
+var a = activeSchool === s;
+var br = s === 0 ? “border-right:1px solid #334155;” : “”;
+html += ‘<button onclick=“setSchool(’ + s + ‘)” style=“flex:1;padding:12px 8px;border:none;font-size:13px;font-family:Georgia,serif;’ + br + ‘background:’ + (a ? SCHOOL_COLORS[s] : “#1e293b”) + ‘;color:’ + (a ? “#fff” : “#64748b”) + ‘;font-weight:’ + (a ? 700 : 400) + ‘”>’
++ esc(SCHOOLS[s])
++ ’ <span style=“margin-left:6px;font-size:11px;background:’ + (a ? “rgba(255,255,255,0.2)” : “#334155”) + ‘;padding:2px 7px;border-radius:10px”>’ + cnt + ‘</span>’
++ ‘</button>’;
+}
+html += ‘</div>’;
 
-const cats = [“All”,…CATEGORIES].map(cat=>{
-const a = activeCategory===cat;
-return `<button onclick="setCat('${cat.replace(/'/g,"\\'")}')\" style="padding:5px 10px;border-radius:20px;border:1px solid ${a?SCHOOL_ACCENT[activeSchool]:"#334155"};background:${a?SCHOOL_ACCENT[activeSchool]+"22":"transparent"};color:${a?SCHOOL_ACCENT[activeSchool]:"#64748b"};font-size:11px;cursor:pointer;font-family:Georgia,serif;white-space:nowrap">${cat}</button>`;
-}).join(””);
+// Category filters
+html += ‘<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">’;
+var allActive = activeCategory === “All”;
+html += ’<button onclick=“setCat(-1)” style=“padding:5px 10px;border-radius:20px;border:1px solid ’ + (allActive ? SCHOOL_ACCENT[activeSchool] : “#334155”) + ‘;background:’ + (allActive ? SCHOOL_ACCENT[activeSchool] + “22” : “transparent”) + ‘;color:’ + (allActive ? SCHOOL_ACCENT[activeSchool] : “#64748b”) + ‘;font-size:11px;font-family:Georgia,serif”>All</button>’;
+for (var c = 0; c < CATEGORIES.length; c++) {
+var ca = activeCategory === CATEGORIES[c];
+html += ‘<button onclick=“setCat(’ + c + ’)” style=“padding:5px 10px;border-radius:20px;border:1px solid ’ + (ca ? SCHOOL_ACCENT[activeSchool] : “#334155”) + ‘;background:’ + (ca ? SCHOOL_ACCENT[activeSchool] + “22” : “transparent”) + ‘;color:’ + (ca ? SCHOOL_ACCENT[activeSchool] : “#64748b”) + ‘;font-size:11px;font-family:Georgia,serif”>’ + esc(CATEGORIES[c]) + ‘</button>’;
+}
+html += ‘</div>’;
 
-const proHTML = pros.length ? pros.map(renderCard).join(””) : `<div style="background:#1e293b;border-radius:8px;padding:20px;text-align:center;color:#475569;font-size:13px;border:1px dashed #334155">No pros added yet</div>`;
-const conHTML = cons.length ? cons.map(renderCard).join(””) : `<div style="background:#1e293b;border-radius:8px;padding:20px;text-align:center;color:#475569;font-size:13px;border:1px dashed #334155">No cons added yet</div>`;
+// Add buttons
+html += ‘<div style="display:flex;gap:10px;margin-bottom:20px">’;
+html += ‘<button data-t="pro" onclick="addItem(this.dataset.t)" style="padding:10px 18px;border-radius:8px;border:1px solid #34d399;background:#065f4622;color:#34d399;font-size:14px;font-weight:600;font-family:Georgia,serif">+ Add Pro</button>’;
+html += ‘<button data-t="con" onclick="addItem(this.dataset.t)" style="padding:10px 18px;border-radius:8px;border:1px solid #f87171;background:#7f1d1d22;color:#f87171;font-size:14px;font-weight:600;font-family:Georgia,serif">+ Add Con</button>’;
+html += ‘</div>’;
 
-return ` <div style="display:flex;border-radius:10px;overflow:hidden;border:1px solid #334155;margin-bottom:20px">${tabs}</div> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">${cats}</div> <div style="display:flex;gap:10px;margin-bottom:20px"> <button onclick="addItem('pro')" style="padding:10px 18px;border-radius:8px;border:1px solid #34d399;background:#065f4622;color:#34d399;font-size:14px;font-weight:600;cursor:pointer">+ Add Pro</button> <button onclick="addItem('con')" style="padding:10px 18px;border-radius:8px;border:1px solid #f87171;background:#7f1d1d22;color:#f87171;font-size:14px;font-weight:600;cursor:pointer">+ Add Con</button> </div> <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"> <div> <div style="font-size:11px;letter-spacing:0.12em;color:#34d399;text-transform:uppercase;margin-bottom:10px;font-weight:700">✅ Pros (${pros.length})</div> ${proHTML} </div> <div> <div style="font-size:11px;letter-spacing:0.12em;color:#f87171;text-transform:uppercase;margin-bottom:10px;font-weight:700">❌ Cons (${cons.length})</div> ${conHTML} </div> </div>`;
+// Cards grid
+var filtered = items.filter(function(i){ return i.school===activeSchool && (activeCategory===“All” || i.category===activeCategory); });
+var pros = filtered.filter(function(i){return i.type===“pro”;});
+var cons = filtered.filter(function(i){return i.type===“con”;});
+
+var proHTML = pros.length ? pros.map(renderCard).join(””) : ‘<div style="background:#1e293b;border-radius:8px;padding:20px;text-align:center;color:#475569;font-size:13px;border:1px dashed #334155">No pros added yet</div>’;
+var conHTML = cons.length ? cons.map(renderCard).join(””) : ‘<div style="background:#1e293b;border-radius:8px;padding:20px;text-align:center;color:#475569;font-size:13px;border:1px dashed #334155">No cons added yet</div>’;
+
+html += ‘<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">’;
+html += ‘<div><div style="font-size:11px;letter-spacing:0.12em;color:#34d399;text-transform:uppercase;margin-bottom:10px;font-weight:700">✅ Pros (’ + pros.length + ‘)</div>’ + proHTML + ‘</div>’;
+html += ‘<div><div style="font-size:11px;letter-spacing:0.12em;color:#f87171;text-transform:uppercase;margin-bottom:10px;font-weight:700">❌ Cons (’ + cons.length + ‘)</div>’ + conHTML + ‘</div>’;
+html += ‘</div>’;
+
+return html;
 }
 
+// ── Compare view ──────────────────────────────────────
 function renderCompare() {
-const scores = SCHOOLS.map((_,i)=>score(i));
-const maxS = Math.max(Math.abs(scores[0]),Math.abs(scores[1]),1);
+var scores = [score(0), score(1)];
+var maxS = Math.max(Math.abs(scores[0]), Math.abs(scores[1]), 1);
+var html = ‘<h2 style="font-size:17px;font-weight:600;color:#cbd5e1;margin-bottom:20px">Score Summary</h2>’;
 
-const bars = SCHOOLS.map((school,idx)=>{
-const s=scores[idx], pos=s>=0;
-const bw=Math.abs(s)/maxS*100;
-const pc=items.filter(i=>i.school===idx&&i.type===“pro”&&i.text.trim()).length;
-const cc=items.filter(i=>i.school===idx&&i.type===“con”&&i.text.trim()).length;
-return `<div style="background:#1e293b;border:1px solid ${SCHOOL_COLORS[idx]}44;border-radius:12px;padding:18px 20px;margin-bottom:14px"> <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"> <div style="font-weight:700;font-size:15px;color:${SCHOOL_ACCENT[idx]}">${school}</div> <div style="font-size:20px;font-weight:800;color:${pos?"#34d399":"#f87171"}">${pos?"+":""}${s}</div> </div> <div style="background:#0f172a;border-radius:6px;height:10px;overflow:hidden"> <div style="height:100%;width:${bw}%;background:${pos?"#10b981":"#ef4444"};border-radius:6px"></div> </div> <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:#94a3b8"> <span>✅ ${pc} pros</span><span>❌ ${cc} cons</span> </div> </div>`;
-}).join(””);
-
-const cats = CATEGORIES.map(cat=>{
-const rows=[0,1].map(idx=>({
-pros:items.filter(i=>i.school===idx&&i.type===“pro”&&i.category===cat&&i.text.trim()),
-cons:items.filter(i=>i.school===idx&&i.type===“con”&&i.category===cat&&i.text.trim()),
-}));
-if(!rows[0].pros.length&&!rows[0].cons.length&&!rows[1].pros.length&&!rows[1].cons.length) return “”;
-const cols = SCHOOLS.map((s,idx)=>{
-const pp=rows[idx].pros.map(i=>`<div style="font-size:12px;color:#86efac;margin-bottom:3px">✅ ${esc(i.text)}</div>`).join(””);
-const cc=rows[idx].cons.map(i=>`<div style="font-size:12px;color:#fca5a5;margin-bottom:3px">❌ ${esc(i.text)}</div>`).join(””);
-const empty=!rows[idx].pros.length&&!rows[idx].cons.length?`<div style="font-size:11px;color:#475569;font-style:italic">Nothing yet</div>`:””;
-return `<div style="background:#1e293b;border-radius:8px;padding:12px;border-top:3px solid ${SCHOOL_ACCENT[idx]}"> <div style="font-size:11px;font-weight:600;color:${SCHOOL_ACCENT[idx]};margin-bottom:6px">${s}</div> ${pp}${cc}${empty} </div>`;
-}).join(””);
-return `<div style="margin-bottom:18px"> <div style="font-size:11px;letter-spacing:0.12em;color:#64748b;text-transform:uppercase;margin-bottom:8px">${cat}</div> <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cols}</div> </div>`;
-}).join(””);
-
-return `<h2 style="font-size:17px;font-weight:600;color:#cbd5e1;margin-bottom:20px">Score Summary</h2> ${bars} <h2 style="font-size:17px;font-weight:600;color:#cbd5e1;margin:28px 0 16px">Category Breakdown</h2> ${cats || '<div style="color:#475569;font-size:13px">Add items in Build mode first.</div>'}`;
+for (var s = 0; s < SCHOOLS.length; s++) {
+var sc = scores[s];
+var bw = Math.abs(sc) / maxS * 100;
+var pos = sc >= 0;
+var pc = items.filter(function(i){ return i.school===s && i.type===“pro” && i.text.trim(); }).length;
+var cc = items.filter(function(i){ return i.school===s && i.type===“con” && i.text.trim(); }).length;
+html += ‘<div style="background:#1e293b;border:1px solid ' + SCHOOL_COLORS[s] + '44;border-radius:12px;padding:18px 20px;margin-bottom:14px">’
++ ‘<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">’
++ ‘<div style="font-weight:700;font-size:15px;color:' + SCHOOL_ACCENT[s] + '">’ + esc(SCHOOLS[s]) + ‘</div>’
++ ‘<div style=“font-size:20px;font-weight:800;color:’ + (pos ? “#34d399” : “#f87171”) + ‘”>’ + (pos ? “+” : “”) + sc + ‘</div>’
++ ‘</div>’
++ ‘<div style="background:#0f172a;border-radius:6px;height:10px;overflow:hidden">’
++ ‘<div style=“height:100%;width:’ + bw + ‘%;background:’ + (pos ? “#10b981” : “#ef4444”) + ‘;border-radius:6px”></div>’
++ ‘</div>’
++ ‘<div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:#94a3b8"><span>✅ ’ + pc + ’ pros</span><span>❌ ’ + cc + ’ cons</span></div>’
++ ‘</div>’;
 }
 
+html += ‘<h2 style="font-size:17px;font-weight:600;color:#cbd5e1;margin:28px 0 16px">Category Breakdown</h2>’;
+var hasAny = false;
+
+for (var ci = 0; ci < CATEGORIES.length; ci++) {
+var cat = CATEGORIES[ci];
+var rows = [0,1].map(function(idx){
+return {
+pros: items.filter(function(i){ return i.school===idx && i.type===“pro” && i.category===cat && i.text.trim(); }),
+cons: items.filter(function(i){ return i.school===idx && i.type===“con” && i.category===cat && i.text.trim(); })
+};
+});
+if (!rows[0].pros.length && !rows[0].cons.length && !rows[1].pros.length && !rows[1].cons.length) continue;
+hasAny = true;
+html += ‘<div style="margin-bottom:18px">’
++ ‘<div style="font-size:11px;letter-spacing:0.12em;color:#64748b;text-transform:uppercase;margin-bottom:8px">’ + esc(cat) + ‘</div>’
++ ‘<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">’;
+for (var si = 0; si < SCHOOLS.length; si++) {
+html += ‘<div style="background:#1e293b;border-radius:8px;padding:12px;border-top:3px solid ' + SCHOOL_ACCENT[si] + '">’
++ ‘<div style="font-size:11px;font-weight:600;color:' + SCHOOL_ACCENT[si] + ';margin-bottom:6px">’ + esc(SCHOOLS[si]) + ‘</div>’;
+rows[si].pros.forEach(function(i){ html += ’<div style="font-size:12px;color:#86efac;margin-bottom:3px">✅ ’ + esc(i.text) + ‘</div>’; });
+rows[si].cons.forEach(function(i){ html += ’<div style="font-size:12px;color:#fca5a5;margin-bottom:3px">❌ ’ + esc(i.text) + ‘</div>’; });
+if (!rows[si].pros.length && !rows[si].cons.length) html += ‘<div style="font-size:11px;color:#475569;font-style:italic">Nothing yet</div>’;
+html += ‘</div>’;
+}
+html += ‘</div></div>’;
+}
+
+if (!hasAny) html += ‘<div style="color:#475569;font-size:13px">Add items in Build mode first.</div>’;
+return html;
+}
+
+// ── Main render ───────────────────────────────────────
 function render() {
-document.getElementById(“app”).innerHTML = currentView===“build” ? renderBuild() : renderCompare();
+var el = document.getElementById(“app”);
+if (!el) { console.error(“No #app element”); return; }
+try {
+el.innerHTML = currentView === “build” ? renderBuild() : renderCompare();
+} catch(e) {
+el.innerHTML = ’<div style="color:red;padding:20px">Error: ’ + e.message + ‘</div>’;
+console.error(e);
+}
 }
 
 render();
